@@ -3,6 +3,8 @@
 <h2>What Does It Do?</h2>
 It's a simple tool to help analyse currently running process/scripts. It can report start/finish times for scripts, 
 heck memory usage, and make it a lot easier to digest logs.
+Each marker has its own id, which makes it a lot easier to track down in logs. Also, its final report should contain 
+all the information you need, without trawling through thousands of entries.
 
 <h2>Usage</h2>
 When creating a new instance, The required options are the name of the process you are trying to analyse, and the
@@ -22,7 +24,7 @@ $marker->start();
 ```
 
 At any point, in the script, you can set a mark. The Marker will make a note of how long the 
-process has been running, and the memory in use, at that point.
+process has been running, and the memory in use, at that point. 
 
 ```php
 $marker->mark();
@@ -45,3 +47,4 @@ $marker->checkMemoryUsage();
 
 <h2>Where Does The Logging Go?</h2>
 That is totally up to you. Marker will accept any psr-3 compliant logger, so be sure you have configured that.
+
