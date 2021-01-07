@@ -11,7 +11,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Tev\\Marker": "src/Marker"
+            "Tev\\Marker\\": "src/Marker"
         }
     }
 }
