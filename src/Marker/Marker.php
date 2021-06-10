@@ -93,7 +93,7 @@ class Marker implements MarkerInterface
     /**
      * @var bool
      */
-    private $hasStarted;
+    private $isRunning;
 
     /**
      * Marker constructor.
@@ -104,7 +104,7 @@ class Marker implements MarkerInterface
      */
     public function __construct(
         $scriptName,
-        LoggerInterface $logger,
+        LoggerInterface $logger = null,
         $getMemoryUsageInMegabytes = true,
         $dateFormat = ''
     ) {
@@ -113,7 +113,7 @@ class Marker implements MarkerInterface
         $this->dateTimeFormat            = !empty($dateFormat) ?: $this->dateTimeFormat;
         $this->logger                    = $logger;
         $this->hasFinished               = false;
-        $this->hasStarted                = false;
+        $this->isRunning                 = false;
         $this->reportRealMemoryUsage     = false;
         $this->getMemoryUsageInMegabytes = $getMemoryUsageInMegabytes;
     }
@@ -126,11 +126,18 @@ class Marker implements MarkerInterface
      */
     public function start($extraInfo = '')
     {
-        if($this->hasStarted) {
-            return;
+        if(null === $this->logger) {
+            // I'd like to throw an exception here. But we don't really want this
+            // to stop any code that could be executing, as it's not critical.
+            // Maybe in a future version.
+            return false;
         }
 
-        $this->hasStarted           = true;
+        if($this->isRunning) {
+            return true;
+        }
+
+        $this->isRunning            = true;
         $this->startTime            = microtime(true);
         $this->startDateTimeStamp   = $this->getCurrentDateTimeStamp();
         $this->startMemoryUsage     = memory_get_usage($this->reportRealMemoryUsage);
@@ -147,12 +154,15 @@ class Marker implements MarkerInterface
         }
 
         $this->logger->info($message);
+
+        return true;
     }
 
     /**
      * This method is designed to be used multiple times. Use at appropriate points, throughout
      * to note key checkpoints, whilst a process is running.
      * @param string $extraInfo : Log whatever extra detail you feel is necessary
+     * @return bool
      */
     public function mark($extraInfo = '')
     {
@@ -161,8 +171,10 @@ class Marker implements MarkerInterface
          * start point. However, the Marker class will not fail, and will start from the first marker.
          * But this may lead to poorer analysis.
          */
-        if(!$this->hasStarted) {
-            $this->start();
+        if(!$this->isRunning) {
+            if(!$this->start()) {
+                return false;
+            }
             $this->logger->warning('Marker asked to mark, without being started correctly.');
         }
 
@@ -180,15 +192,22 @@ class Marker implements MarkerInterface
         }
 
         $this->logger->info($message);
+
+        return true;
     }
 
     /**
      * Use once, when the process has mostly completed its task
      *
      * @param string $extraInfo : Log whatever extra detail you feel is necessary
+     * @return bool
      */
     public function finish($extraInfo = '')
     {
+        if(!$this->isRunning) {
+            return false;
+        }
+
         if(!$this->hasFinished) {
             $this->hasFinished = true;
             $this->finishTime = $this->getRunTime();
@@ -209,6 +228,8 @@ class Marker implements MarkerInterface
 
             $this->logger->info($message);
         }
+
+        return true;
     }
 
     /**
@@ -220,6 +241,16 @@ class Marker implements MarkerInterface
         if($this->peakMemoryUsage < $currentMemoryUsage) {
             $this->peakMemoryUsage = $currentMemoryUsage;
         }
+    }
+
+    /**
+     * Allow a logger to be injected later than object construction
+     *
+     * @param LoggerInterface $logger
+     */
+    public function injectLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 
     /**
